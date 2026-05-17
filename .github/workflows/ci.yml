@@ -1,132 +1,132 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
-permissions:
-  contents: write       # for auto-tag on main
-  pull-requests: write  # for plan comment on PR
-  id-token: write       # for OIDC → AWS (future real plan)
+# Uncomment to enable automatic CI on push/PR
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+#     branches: [main]
 
 env:
   TF_VERSION: "1.7.5"
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: us-east-1
 
 jobs:
-  # ── Validate + Lint (every PR and push) ─────────────────────────────────────
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform fmt -check -recursive
+
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    needs: fmt
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-
-      - name: terraform fmt check
-        run: terraform fmt -check -recursive
-
-      - name: terraform init
+      - name: Init (dry run)
         run: terraform init -backend=false
-        env:
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
-          AWS_DEFAULT_REGION: us-east-1
-
-      - name: terraform validate
+      - name: Validate
         run: terraform validate
-        env:
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
-          AWS_DEFAULT_REGION: us-east-1
-
-      - name: TFLint
-        uses: terraform-linters/setup-tflint@v4
+      - uses: terraform-linters/setup-tflint@v4
         with:
           tflint_version: latest
-      - run: tflint --init && tflint --format compact
+      - name: TFLint
+        run: tflint --init && tflint --format compact
 
-  # ── Plan on PR (posts plan as comment) ───────────────────────────────────────
-  plan:
-    name: Plan
+  plan-dry-run:
+    name: Plan (dry run)
     runs-on: ubuntu-latest
     needs: validate
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-
-      - name: terraform init
+      - name: Init (dry run)
         run: terraform init -backend=false
-        env:
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
-          AWS_DEFAULT_REGION: us-east-1
+      - name: Plan (dry run)
+        run: terraform plan -backend=false -var-file=example.tfvars
 
-      - name: terraform plan
-        id: plan
-        run: |
-          terraform plan -var-file=example.tfvars -no-color 2>&1 | tee plan.txt
-          echo "exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-        env:
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
-          AWS_DEFAULT_REGION: us-east-1
-        continue-on-error: true
-
-      - name: Post plan comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const plan = fs.readFileSync('plan.txt', 'utf8');
-            const maxLen = 65000;
-            const truncated = plan.length > maxLen
-              ? plan.substring(0, maxLen) + '\n... (truncated)'
-              : plan;
-            const body = `### Terraform Plan\n\`\`\`hcl\n${truncated}\n\`\`\``;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body
-            });
-
-  # ── Auto-tag patch on merge to main ──────────────────────────────────────────
-  auto-tag:
-    name: Auto Tag
+  security:
+    name: Security Scan
     runs-on: ubuntu-latest
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "1"
 
-      - name: Bump patch version and tag
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          LATEST=$(git tag --sort=-v:refname | grep '^v' | head -1)
-          if [ -z "$LATEST" ]; then
-            NEW_TAG="v0.1.0"
-          else
-            MAJOR=$(echo $LATEST | cut -d. -f1 | tr -d v)
-            MINOR=$(echo $LATEST | cut -d. -f2)
-            PATCH=$(echo $LATEST | cut -d. -f3)
-            NEW_TAG="v${MAJOR}.${MINOR}.$((PATCH+1))"
-          fi
-
-          echo "Tagging $NEW_TAG"
-          git tag -a "$NEW_TAG" -m "Release $NEW_TAG [auto]"
-          git push origin "$NEW_TAG"
+# ── COMMENTED OUT — activate once AWS OIDC role + state bucket are provisioned ─
+#
+# plan:
+#   name: Plan (real — posts comment on PR)
+#   runs-on: ubuntu-latest
+#   needs: validate
+#   if: github.event_name == 'pull_request'
+#   permissions:
+#     id-token: write
+#     contents: read
+#     pull-requests: write
+#   steps:
+#     - uses: actions/checkout@v4
+#     - uses: hashicorp/setup-terraform@v3
+#       with:
+#         terraform_version: ${{ env.TF_VERSION }}
+#     - uses: aws-actions/configure-aws-credentials@v4
+#       with:
+#         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+#         aws-region: us-east-1
+#     - run: |
+#         terraform init \
+#           -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+#           -backend-config="key=dev/eks/terraform.tfstate" \
+#           -backend-config="region=us-east-1" \
+#           -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
+#     - run: terraform plan -var-file=envs/dev/eks.tfvars -var-file=envs/dev/common.tfvars -no-color 2>&1 | tee plan.txt
+#     - uses: actions/github-script@v7
+#       with:
+#         script: |
+#           const plan = require('fs').readFileSync('plan.txt','utf8').substring(0,65000);
+#           github.rest.issues.createComment({
+#             issue_number: context.issue.number,
+#             owner: context.repo.owner, repo: context.repo.repo,
+#             body: `### Terraform Plan\n\`\`\`\n${plan}\n\`\`\``
+#           });
+#
+# auto-tag:
+#   name: Auto Tag
+#   runs-on: ubuntu-latest
+#   needs: validate
+#   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#   permissions:
+#     contents: write
+#   steps:
+#     - uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
+#         token: ${{ secrets.GITHUB_TOKEN }}
+#     - run: |
+#         LATEST=$(git tag --sort=-v:refname | grep '^v' | head -1)
+#         [ -z "$LATEST" ] && NEW_TAG="v0.1.0" || \
+#           NEW_TAG="v$(echo $LATEST | cut -d. -f1 | tr -d v).$(echo $LATEST | cut -d. -f2).$(($(echo $LATEST | cut -d. -f3)+1))"
+#         git config user.name "github-actions[bot]"
+#         git config user.email "github-actions[bot]@users.noreply.github.com"
+#         git tag -a "$NEW_TAG" -m "Release $NEW_TAG [auto]"
+#         git push origin "$NEW_TAG"
