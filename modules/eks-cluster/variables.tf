@@ -54,16 +54,16 @@ variable "cluster_log_types" {
 
 variable "addons" {
   type = map(object({
-    version               = optional(string)
-    resolve_conflicts     = optional(string, "OVERWRITE")
+    version           = optional(string)
+    resolve_conflicts = optional(string, "OVERWRITE")
   }))
   description = "EKS managed add-ons to install"
   default = {
-    coredns                = {}
-    kube-proxy             = {}
-    vpc-cni                = {}
-    pod-identity-agent     = {}
-    aws-ebs-csi-driver     = {}
+    coredns            = {}
+    kube-proxy         = {}
+    vpc-cni            = {}
+    pod-identity-agent = {}
+    aws-ebs-csi-driver = {}
   }
 }
 

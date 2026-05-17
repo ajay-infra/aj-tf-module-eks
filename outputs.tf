@@ -71,16 +71,16 @@ output "cilium_helm_values" {
     Usage: helm install cilium cilium/cilium --version <cilium_version> -f <(terraform output -json cilium_helm_values)
   EOT
   value = var.cni == "cilium" ? {
-    "routingMode"                                  = "tunnel"
-    "tunnelProtocol"                               = "vxlan"
-    "ipam.mode"                                    = "cluster-pool"
-    "ipam.operator.clusterPoolIPv4PodCIDRList[0]"  = var.pod_cidr
-    "kubeProxyReplacement"                         = "true"
-    "k8sServiceHost"                               = module.eks_cluster.cluster_endpoint
-    "k8sServicePort"                               = "443"
-    "eni.enabled"                                  = "false"
-    "hubble.relay.enabled"                         = "true"
-    "hubble.ui.enabled"                            = "true"
+    "routingMode"                                 = "tunnel"
+    "tunnelProtocol"                              = "vxlan"
+    "ipam.mode"                                   = "cluster-pool"
+    "ipam.operator.clusterPoolIPv4PodCIDRList[0]" = var.pod_cidr
+    "kubeProxyReplacement"                        = "true"
+    "k8sServiceHost"                              = module.eks_cluster.cluster_endpoint
+    "k8sServicePort"                              = "443"
+    "eni.enabled"                                 = "false"
+    "hubble.relay.enabled"                        = "true"
+    "hubble.ui.enabled"                           = "true"
   } : null
 }
 

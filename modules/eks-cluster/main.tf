@@ -44,10 +44,10 @@ resource "aws_security_group" "nodes" {
   vpc_id      = var.vpc_id
 
   ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
     description = "Node-to-node all traffic"
   }
 
@@ -117,9 +117,9 @@ resource "aws_eks_cluster" "main" {
 resource "aws_eks_addon" "this" {
   for_each = var.addons
 
-  cluster_name             = aws_eks_cluster.main.name
-  addon_name               = each.key
-  addon_version            = each.value.version
+  cluster_name                = aws_eks_cluster.main.name
+  addon_name                  = each.key
+  addon_version               = each.value.version
   resolve_conflicts_on_update = each.value.resolve_conflicts
 
   depends_on = [aws_eks_cluster.main]

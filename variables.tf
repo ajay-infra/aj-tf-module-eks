@@ -96,7 +96,7 @@ variable "public_subnet_ids" {
 # ── AZ Count ──────────────────────────────────────────────────────────────────
 
 variable "az_count" {
-  type = number
+  type        = number
   description = <<-EOT
     Number of Availability Zones to spread the cluster across.
       2 = cost-optimised dev/staging  (lower cross-AZ data-transfer costs, relaxed SLO)
@@ -105,7 +105,7 @@ variable "az_count" {
     Subnets in private_subnet_ids / public_subnet_ids must be ordered by AZ
     (standard output from aj-tf-module-vpc).
   EOT
-  default = 3
+  default     = 3
   validation {
     condition     = contains([2, 3, 4], var.az_count)
     error_message = "az_count must be 2, 3, or 4."
@@ -122,7 +122,7 @@ variable "cni" {
       cilium  = Cilium overlay (VXLAN) — pods get IPs from pod_cidr, not VPC CIDR;
                 replaces vpc-cni and kube-proxy addons automatically
   EOT
-  default = "vpc-cni"
+  default     = "vpc-cni"
   validation {
     condition     = contains(["vpc-cni", "cilium"], var.cni)
     error_message = "cni must be 'vpc-cni' or 'cilium'."
@@ -137,7 +137,7 @@ variable "pod_cidr" {
     Default 100.64.0.0/10 provides ~4M pod IPs and is RFC 6598 (carrier-grade NAT)
     space — safe to use even in enterprise environments.
   EOT
-  default = "100.64.0.0/10"
+  default     = "100.64.0.0/10"
 }
 
 # ── API Server Access ─────────────────────────────────────────────────────────
@@ -160,14 +160,14 @@ variable "public_access_cidrs" {
 # ── Control Plane Logging ─────────────────────────────────────────────────────
 
 variable "cluster_log_types" {
-  type = list(string)
+  type        = list(string)
   description = <<-EOT
     EKS control plane log types to ship to CloudWatch Logs.
     Full set : ["api", "audit", "authenticator", "controllerManager", "scheduler"]
     Set to [] in dev to avoid CloudWatch ingestion costs (~$0.50/GB per type).
     Minimum recommended for prod: ["api", "audit"].
   EOT
-  default = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  default     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 }
 
 # ── Add-ons ───────────────────────────────────────────────────────────────────
