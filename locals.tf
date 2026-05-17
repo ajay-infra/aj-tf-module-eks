@@ -1,10 +1,6 @@
 locals {
   name_prefix   = "${lower(replace(var.cluster_name, " ", "-"))}-${var.environment}"
   is_blue_green = var.eks_deployment_mode == "blue_green"
-  is_standalone = var.eks_deployment_mode == "standalone"
-
-  # Color suffix for blue/green resource naming
-  color_suffix = local.is_blue_green ? "-${var.color}" : ""
 
   # AZ-scoped subnets — sliced to az_count.
   # Subnets must be ordered by AZ (standard aj-tf-module-vpc output).

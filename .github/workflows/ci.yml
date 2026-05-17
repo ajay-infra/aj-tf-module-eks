@@ -58,7 +58,7 @@ jobs:
       - name: Init (dry run)
         run: terraform init -backend=false
       - name: Plan (dry run)
-        run: terraform plan -backend=false -var-file=example.tfvars
+        run: terraform plan -var-file=example.tfvars
 
   security:
     name: Security Scan
