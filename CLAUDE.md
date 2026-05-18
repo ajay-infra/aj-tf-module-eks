@@ -10,6 +10,31 @@ Provisions an EKS cluster optimized for AI inference workloads. Blue/green aware
 
 ---
 
+## Where It Fits
+
+**Architecture layer:** L4 — Compute
+**Provisioned by:** `aj-infra-release` — `provision-eks.yml` (Stage 2) or `provision-central.yml` (Stage 2)
+**Depends on:** `aj-tf-module-vpc` outputs (vpc_id, subnet IDs) passed in as `-var` flags
+**State key pattern:** `workload/blue-green/<env>/eks-blue/terraform.tfstate` or `central/<tier>/eks/terraform.tfstate`
+
+## How to Use
+
+Triggered automatically as Stage 2 of `provision-eks.yml` in aj-infra-release after the VPC stage completes.
+
+tfvars files to configure:
+- `aj-infra-release/envs/workload/blue-green/<env>/eks-blue.tfvars` — blue cluster config
+- `aj-infra-release/envs/workload/blue-green/<env>/eks-green.tfvars` — green cluster config (used during upgrade)
+- `aj-infra-release/envs/workload/standalone/<env>/eks.tfvars` — standalone cluster config
+
+GitHub secrets required:
+- `TF_STATE_BUCKET`, `AWS_DEPLOY_ROLE_ARN`
+
+Outputs consumed downstream:
+- `aj-infra-platform` reads EKS remote state via `data.terraform_remote_state.eks`
+- `aj-infra-central` reads central EKS state to get cluster endpoint for Helm provider
+
+---
+
 ## Deployment Modes
 
 ### `standalone`
