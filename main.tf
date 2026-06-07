@@ -59,3 +59,60 @@ module "pod_identity" {
   inline_policy        = each.value.inline_policy
   tags                 = local.full_tags
 }
+
+# ── EKS Access Entries — IAM → K8s group mapping ──────────────────────────────
+# Replaces aws-auth ConfigMap (deprecated in EKS 1.29+).
+# Maps IAM Identity Center roles to K8s groups; ClusterRoles in k8s-manifests
+# bind those groups to actual permissions.
+#
+# Standard entries (always created when role ARNs provided):
+#   infra-lead     → AmazonEKSClusterAdminPolicy (system:masters equivalent)
+#   infra-core     → K8s group: infra-core (bound to platform-deployer ClusterRole)
+#   infra-readonly → K8s group: infra-readonly (bound to platform-viewer ClusterRole)
+#
+# Additional entries can be passed via var.iam_access_entries for team service accounts.
+
+resource "aws_eks_access_entry" "infra_lead" {
+  count         = var.infra_lead_role_arn != "" ? 1 : 0
+  cluster_name  = module.eks_cluster.cluster_name
+  principal_arn = var.infra_lead_role_arn
+  type          = "STANDARD"
+  tags          = local.full_tags
+}
+
+resource "aws_eks_access_policy_association" "infra_lead_cluster_admin" {
+  count         = var.infra_lead_role_arn != "" ? 1 : 0
+  cluster_name  = module.eks_cluster.cluster_name
+  principal_arn = var.infra_lead_role_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  access_scope { type = "cluster" }
+  depends_on = [aws_eks_access_entry.infra_lead]
+}
+
+resource "aws_eks_access_entry" "infra_core" {
+  count             = var.infra_core_role_arn != "" ? 1 : 0
+  cluster_name      = module.eks_cluster.cluster_name
+  principal_arn     = var.infra_core_role_arn
+  type              = "STANDARD"
+  kubernetes_groups = ["infra-core"]
+  tags              = local.full_tags
+}
+
+resource "aws_eks_access_entry" "infra_readonly" {
+  count             = var.infra_readonly_role_arn != "" ? 1 : 0
+  cluster_name      = module.eks_cluster.cluster_name
+  principal_arn     = var.infra_readonly_role_arn
+  type              = "STANDARD"
+  kubernetes_groups = ["infra-readonly"]
+  tags              = local.full_tags
+}
+
+# Additional access entries for team service accounts or CI roles
+resource "aws_eks_access_entry" "additional" {
+  for_each          = { for e in var.iam_access_entries : e.principal_arn => e }
+  cluster_name      = module.eks_cluster.cluster_name
+  principal_arn     = each.value.principal_arn
+  type              = "STANDARD"
+  kubernetes_groups = each.value.kubernetes_groups
+  tags              = local.full_tags
+}
