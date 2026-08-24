@@ -256,16 +256,19 @@ variable "node_groups" {
 # Use a data source in the calling module to resolve the ARN by name prefix.
 
 variable "infra_lead_role_arn" {
+  type        = string
   description = "IAM role ARN for infra-lead (AJPlatformInfraLead) — gets cluster-admin"
   default     = ""
 }
 
 variable "infra_core_role_arn" {
+  type        = string
   description = "IAM role ARN for infra-core (AJPlatformInfraEngineer) — K8s group: infra-core"
   default     = ""
 }
 
 variable "infra_readonly_role_arn" {
+  type        = string
   description = "IAM role ARN for read-only (AJPlatformReadOnly) — K8s group: infra-readonly"
   default     = ""
 }

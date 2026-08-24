@@ -8,7 +8,7 @@ Terraform module for AWS EKS — production-grade, blue/green aware, with dynami
 
 | Tool / Provider | Pinned version | Notes |
 |---|---|---|
-| Terraform | `= 1.7.5` | Exact pin — upgrade deliberately after testing |
+| Terraform | `= 1.10.5` | Exact pin — upgrade deliberately after testing |
 | AWS Provider (`hashicorp/aws`) | `= 5.100.0` | Exact pin — avoid surprise drift |
 | Kubernetes | `1.35` (default) | See support lifecycle below |
 
@@ -293,7 +293,7 @@ helm install cilium cilium/cilium \
 | `cluster_name` | yes | — | EKS cluster name (e.g. `ai-search-prod-blue`) |
 | `aws_region` | no | `us-east-1` | AWS region |
 | `environment` | no | `dev` | Environment label (used in resource names + tags) |
-| `k8s_version` | no | `1.30` | Kubernetes version |
+| `k8s_version` | no | `1.35` | Kubernetes version |
 | `eks_deployment_mode` | no | `blue_green` | `standalone` or `blue_green` |
 | `color` | no | `blue` | `blue` or `green` — blue_green mode only |
 
@@ -462,7 +462,9 @@ Pod Identity is the current AWS recommendation for new clusters (GA since EKS 1.
 ## Running Locally (Podman container)
 
 ```bash
-# From My-Infra/
+# From aj-infra-context/local-testing/ (formerly My-Infra/ — repo renamed;
+# note this local Podman workflow currently has no Makefile/Dockerfile, see
+# that repo's local-testing/README.md for the known gap)
 make shell
 
 # Inside container
@@ -478,7 +480,7 @@ Dummy AWS credentials (`test`/`test`) and `skip_credentials_validation = true` i
 ## Blue/Green Upgrade Playbook
 
 ```
-1. Prod is running on BLUE (k8s 1.30)
+1. Prod is running on BLUE (k8s 1.35)
 2. terraform apply → provisions GREEN cluster (k8s 1.36)
 3. Deploy workloads to GREEN, run smoke tests
 4. Shift Route53 weighted record: blue=0, green=100
@@ -490,8 +492,9 @@ Dummy AWS credentials (`test`/`test`) and `skip_credentials_validation = true` i
 
 ## Known TODOs
 
-- [ ] EKS access entries (replaces aws-auth ConfigMap — GA in 1.29+)
-- [ ] Karpenter NodePool + EC2NodeClass resources
+- [x] EKS access entries (replaces aws-auth ConfigMap — GA in 1.29+) — see `aws_eks_access_entry.*` in `main.tf`
 - [ ] Windows node group support
 - [ ] Bottlerocket AMI validation testing
 - [ ] IPv6 dual-stack support
+
+> Karpenter NodePool + EC2NodeClass intentionally do **not** belong here — they're GitOps-managed CRDs in `k8s-manifests`, not Terraform resources (see `aj-infra-context/CLAUDE.md`'s architecture). Previously listed as a TODO in this repo by mistake.
