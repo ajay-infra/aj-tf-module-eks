@@ -6,21 +6,21 @@
 
 ## What This Module Does
 
-Provisions an EKS cluster optimized for AI inference workloads. Blue/green aware — each cluster is a standalone unit (blue or green) that connects to the shared data VPC via peering (from aj-tf-module-vpc).
+Provisions an EKS cluster for the platform (L4 in the infrastructure layer stack — see `aj-infra-context/CLAUDE.md`). Supports GPU node groups for inference workloads as one configuration among several, not a defining constraint. Blue/green aware — each cluster is a standalone unit (blue or green) that connects to the shared data VPC via peering (from aj-tf-module-vpc).
 
 ---
 
 ## Deployment Modes
 
 ### `standalone`
-Single cluster. Used for dev/staging or in-place K8s patch upgrades (e.g. 1.30.1 → 1.30.2).
+Single cluster. Used for dev/staging or in-place K8s patch upgrades (e.g. 1.35.1 → 1.35.2).
 
 ### `blue_green`
 One cluster per color. Caller provisions blue first, then green when upgrading K8s minor versions. Traffic shifted via Route53 weighted records in infra-platform/dns/.
 
 **K8s upgrade rule:**
-- Patch upgrade (1.30.x → 1.30.y) → in-place OK
-- Minor upgrade (1.30 → 1.31) → blue/green MANDATORY
+- Patch upgrade (1.35.x → 1.35.y) → in-place OK
+- Minor upgrade (1.35 → 1.36) → blue/green MANDATORY
 - Major EKS add-on changes → blue/green MANDATORY
 
 ---
@@ -81,7 +81,10 @@ infra-platform/main.tf will consume:
 ## Running Locally (Podman container)
 
 ```bash
-make shell                          # from My-Infra/
+# from aj-infra-context/local-testing/ (formerly My-Infra/ — repo renamed;
+# this Podman workflow currently has no Makefile/Dockerfile, see that repo's
+# local-testing/README.md for the known gap)
+make shell
 cd /workspaces/aj-tf-module-eks
 terraform init -backend=false
 terraform plan -var-file=example.tfvars
@@ -93,9 +96,10 @@ Dummy AWS creds (`test`/`test`) + `skip_credentials_validation = true` in provid
 
 ## Known TODOs
 
-- [ ] EKS access entries (replaces aws-auth ConfigMap — GA in 1.29+)
-- [ ] Karpenter NodePool + EC2NodeClass resources (Helm in add-ons, NodePool in k8s-manifests)
-- [ ] Cluster autoscaler alternative evaluation (Karpenter preferred)
+- [x] EKS access entries (replaces aws-auth ConfigMap — GA in 1.29+) — see `aws_eks_access_entry.*` in `main.tf`
+- [x] Cluster autoscaler vs Karpenter evaluation — decided: Karpenter (see `aj-infra-context/CLAUDE.md`'s Full Stack decisions)
 - [ ] Windows node group support (future)
 - [ ] Bottlerocket AMI option (security-hardened alternative to AL2)
 - [ ] IPv6 dual-stack support
+
+> Karpenter NodePool + EC2NodeClass intentionally do **not** belong here — they're GitOps-managed CRDs in `k8s-manifests`, not Terraform resources. Previously listed as a TODO in this repo by mistake.

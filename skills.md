@@ -8,12 +8,12 @@ Provisions an EKS cluster with managed node groups. Supports standalone and blue
 
 ## Stable ref
 ```
-source = "github.com/ajaylakma/aj-tf-module-eks?ref=eks-01"
+source = "github.com/ajay-infra/aj-tf-module-eks?ref=v1.0.0"
 ```
 
 ## Deployment modes
 - `standalone` — single cluster
-- `blue-green` — paired clusters for zero-downtime upgrades
+- `blue_green` — paired clusters for zero-downtime upgrades
 
 ## Key inputs
 | Variable | Description |
@@ -22,7 +22,7 @@ source = "github.com/ajaylakma/aj-tf-module-eks?ref=eks-01"
 | `environment` | dev \| staging \| uat \| prod |
 | `k8s_version` | Kubernetes version |
 | `team` | Owning team slug |
-| `eks_deployment_mode` | standalone \| blue-green |
+| `eks_deployment_mode` | standalone \| blue_green |
 | `vpc_id` | VPC to deploy into |
 | `private_subnet_ids` | Node group subnets |
 | `cni` | vpc-cni \| cilium |
@@ -39,14 +39,14 @@ source = "github.com/ajaylakma/aj-tf-module-eks?ref=eks-01"
 | `node_group_arns` | Node group ARNs |
 
 ## AWS tags applied
-`Env`, `Team`, `ManagedBy`, `CostCenter`, `Model`, `Customer`
+`Environment`, `Team`, `CostCenter`, `ClusterName`, `AZCount` (see `locals.full_tags`), plus whatever's in `common_tags`/`var.tags`. No `Model` or `Customer` tag exists in this module.
 
 ## Depends on
 `aj-tf-module-vpc` — requires vpc_id and subnet_ids
 
 ## Branching convention
 - `main` — active development
-- `eks-01` — stable pinned release
+- semver tags (`v1.0.0`, ...) — stable pinned releases, per `README.md` usage examples
 
 ## CI checks
 fmt, validate, plan (dry-run), tfsec/checkov
