@@ -273,6 +273,12 @@ variable "infra_readonly_role_arn" {
   default     = ""
 }
 
+variable "break_glass_role_arn" {
+  type        = string
+  description = "IAM role ARN for break-glass (AJPlatformBreakGlass) — gets cluster-admin, same mechanism as infra-lead"
+  default     = ""
+}
+
 variable "iam_access_entries" {
   description = "Additional IAM → K8s group mappings (team CI roles, service accounts)"
   type = list(object({

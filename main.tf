@@ -69,6 +69,7 @@ module "pod_identity" {
 #   infra-lead     → AmazonEKSClusterAdminPolicy (system:masters equivalent)
 #   infra-core     → K8s group: infra-core (bound to platform-deployer ClusterRole)
 #   infra-readonly → K8s group: infra-readonly (bound to platform-viewer ClusterRole)
+#   break-glass    → AmazonEKSClusterAdminPolicy (same mechanism as infra-lead)
 #
 # Additional entries can be passed via var.iam_access_entries for team service accounts.
 
@@ -105,6 +106,23 @@ resource "aws_eks_access_entry" "infra_readonly" {
   type              = "STANDARD"
   kubernetes_groups = ["infra-readonly"]
   tags              = local.full_tags
+}
+
+resource "aws_eks_access_entry" "break_glass" {
+  count         = var.break_glass_role_arn != "" ? 1 : 0
+  cluster_name  = module.eks_cluster.cluster_name
+  principal_arn = var.break_glass_role_arn
+  type          = "STANDARD"
+  tags          = local.full_tags
+}
+
+resource "aws_eks_access_policy_association" "break_glass_cluster_admin" {
+  count         = var.break_glass_role_arn != "" ? 1 : 0
+  cluster_name  = module.eks_cluster.cluster_name
+  principal_arn = var.break_glass_role_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  access_scope { type = "cluster" }
+  depends_on = [aws_eks_access_entry.break_glass]
 }
 
 # Additional access entries for team service accounts or CI roles
