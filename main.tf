@@ -108,6 +108,22 @@ resource "aws_eks_access_entry" "infra_readonly" {
   tags              = local.full_tags
 }
 
+# One access entry per team's AJPlatformDeveloper-<team> IAM Identity Center
+# role, each mapped to its own <team>-developers K8s group. Fixed 2026-08-25:
+# there was previously no developer access entry of any kind here — roles.yaml
+# and aj-tf-module-iam-identity-center each separately claimed a different,
+# never-implemented mechanism for this (see that module's main.tf header
+# comment for the full history). kubernetes_groups here must match exactly
+# what register-namespace's generated RoleBinding subjects expect per team.
+resource "aws_eks_access_entry" "team_developer" {
+  for_each          = var.team_developer_role_arns
+  cluster_name      = module.eks_cluster.cluster_name
+  principal_arn     = each.value
+  type              = "STANDARD"
+  kubernetes_groups = ["${each.key}-developers"]
+  tags              = local.full_tags
+}
+
 resource "aws_eks_access_entry" "break_glass" {
   count         = var.break_glass_role_arn != "" ? 1 : 0
   cluster_name  = module.eks_cluster.cluster_name
