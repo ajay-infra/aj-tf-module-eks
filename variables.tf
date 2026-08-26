@@ -279,6 +279,12 @@ variable "break_glass_role_arn" {
   default     = ""
 }
 
+variable "team_developer_role_arns" {
+  type        = map(string)
+  description = "Map of team name -> that team's AJPlatformDeveloper-<team> IAM role ARN (from aj-tf-module-iam-identity-center's developer_permission_set_arns output, resolved to an assumed-role ARN). Each gets its own access entry mapping to K8s group <team>-developers."
+  default     = {}
+}
+
 variable "iam_access_entries" {
   description = "Additional IAM → K8s group mappings (team CI roles, service accounts)"
   type = list(object({
