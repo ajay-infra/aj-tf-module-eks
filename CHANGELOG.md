@@ -4,6 +4,14 @@ All notable changes to this module are documented here. Format loosely follows [
 
 ## [Unreleased]
 
+### Added — security baseline
+- **Kubernetes Secrets envelope encryption.** `encryption_config` on the cluster with a customer-managed KMS key (created per cluster with rotation on, or supplied via `secrets_kms_key_arn`). Without it, Secrets sat in etcd protected only by EKS's own control-plane encryption. With it, reading a Secret requires an explicit `kms:Decrypt` grant and every access is auditable in CloudTrail.
+  - **⚠ One-way.** Enabling this on an existing cluster is permitted but cannot be undone, and the key cannot be changed afterwards. Losing the key makes every Secret permanently unreadable — hence rotation on and a 30-day deletion window. Safe to add now because no cluster exists; a much larger decision later.
+- **East-west encryption via Cilium WireGuard** (`encryption.enabled`, `encryption.type=wireguard`) in `cilium_helm_values`. Pod-to-pod traffic previously crossed the VPC in plaintext. VPC isolation is not encryption: anything with a foothold on the network path sees it.
+  - WireGuard over IPsec for simpler key management (Cilium rotates), lower overhead, and no IKE daemon to operate. Needs kernel 5.6+ or the module, which AL2023 has.
+  - `nodeEncryption` left off — it encrypts host-network traffic too, which interferes with health checks and node-level agents.
+  - **⚠ MTU.** Stacks on the existing vxlan tunnel (~50 bytes vxlan + ~60 WireGuard). Cilium auto-detects, but if large payloads start failing while small requests succeed, check MTU first.
+
 ### Fixed
 - **Break-glass emergency access had no EKS/K8s wiring at all.** `aj-infra-rbac/roles.yaml` (the RBAC SSOT) declares `platform-break-glass` gets `eks_access: cluster_admin_policy` — the same mechanism as `infra-lead` — but this module only ever implemented access entries for `infra_lead`/`infra_core`/`infra_readonly`. In an actual declared incident, anyone assuming `AJPlatformBreakGlass` got full AWS console/CLI admin but could not authenticate to the EKS API at all. Added `break_glass_role_arn` variable plus `aws_eks_access_entry.break_glass` + `aws_eks_access_policy_association.break_glass_cluster_admin`, mirroring the existing `infra_lead` resources exactly.
 - `variables.tf`: `infra_lead_role_arn`, `infra_core_role_arn`, `infra_readonly_role_arn` (added in `e335dd5`, the access-entries commit) had no explicit `type`, tripping TFLint's `terraform_typed_variables` rule and failing CI's `Validate` job — the first PR to actually run CI against current `main` surfaced this. Added `type = string` to all three.

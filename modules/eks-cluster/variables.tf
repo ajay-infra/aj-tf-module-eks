@@ -67,6 +67,18 @@ variable "addons" {
   }
 }
 
+variable "secrets_kms_key_arn" {
+  type        = string
+  default     = ""
+  description = <<-EOT
+    KMS key ARN for Kubernetes Secrets envelope encryption.
+    Empty creates a dedicated key with rotation enabled.
+
+    Enabling encryption is ONE-WAY on an existing cluster and the key cannot be
+    changed afterwards. Losing the key makes every Secret permanently unreadable.
+  EOT
+}
+
 variable "tags" {
   type    = map(string)
   default = {}

@@ -81,6 +81,26 @@ output "cilium_helm_values" {
     "eni.enabled"                                 = "false"
     "hubble.relay.enabled"                        = "true"
     "hubble.ui.enabled"                           = "true"
+
+    # ── East-west encryption ────────────────────────────────────────────────
+    # Without this, pod-to-pod traffic crosses the VPC in plaintext. VPC
+    # isolation is not encryption: anything with a foothold on the network path
+    # — a compromised node, a misconfigured mirror, a peered VPC — sees it.
+    #
+    # WireGuard rather than IPsec: simpler key management (Cilium handles
+    # rotation), lower overhead, and no IKE daemon to operate. Requires kernel
+    # 5.6+ or the wireguard module, which AL2023 has.
+    #
+    # ⚠ MTU. This stacks on the vxlan tunnel above — roughly 50 bytes of vxlan
+    # plus 60 of WireGuard. Cilium auto-detects and adjusts, but if traffic
+    # starts failing for large payloads while small requests succeed, MTU is the
+    # first thing to check.
+    #
+    # nodeEncryption stays off: it encrypts host-network traffic too, which
+    # interferes with the health checks and node-level agents this estate runs.
+    "encryption.enabled"        = "true"
+    "encryption.type"           = "wireguard"
+    "encryption.nodeEncryption" = "false"
   } : null
 }
 

@@ -129,6 +129,22 @@ variable "cni" {
   }
 }
 
+variable "secrets_kms_key_arn" {
+  type        = string
+  default     = ""
+  description = <<-EOT
+    KMS key ARN for Kubernetes Secrets envelope encryption.
+    Empty (the default) creates a dedicated key per cluster with rotation on.
+
+    Without envelope encryption, Secrets sit in etcd protected only by EKS's own
+    control-plane encryption. With it, reading a Secret requires an explicit
+    kms:Decrypt grant, and every access is auditable in CloudTrail.
+
+    ⚠ Enabling this is ONE-WAY on an existing cluster, and the key cannot be
+    changed later. Losing the key makes every Secret permanently unreadable.
+  EOT
+}
+
 variable "pod_cidr" {
   type        = string
   description = <<-EOT

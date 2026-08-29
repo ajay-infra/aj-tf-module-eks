@@ -14,6 +14,7 @@ module "eks_cluster" {
   public_access_cidrs     = var.public_access_cidrs
   cluster_log_types       = var.cluster_log_types
   addons                  = local.effective_addons
+  secrets_kms_key_arn     = var.secrets_kms_key_arn
   tags                    = local.full_tags
 }
 

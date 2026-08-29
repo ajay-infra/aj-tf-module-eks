@@ -91,6 +91,33 @@ resource "aws_security_group_rule" "cluster_from_nodes" {
 
 # ── EKS Cluster ───────────────────────────────────────────────────────────────
 
+# ── KMS key for Secrets envelope encryption ───────────────────────────────────
+# Created here unless an ARN is supplied. Rotation is on, and the deletion
+# window is the maximum: losing this key makes every Secret in the cluster
+# permanently unreadable, so the 30-day window is a deliberate safety margin
+# rather than a default nobody considered.
+
+resource "aws_kms_key" "secrets" {
+  count = var.secrets_kms_key_arn == "" ? 1 : 0
+
+  description             = "EKS secrets envelope encryption — ${var.cluster_name}"
+  enable_key_rotation     = true
+  deletion_window_in_days = 30
+
+  tags = merge(var.tags, { Name = "${var.cluster_name}-secrets" })
+}
+
+resource "aws_kms_alias" "secrets" {
+  count = var.secrets_kms_key_arn == "" ? 1 : 0
+
+  name          = "alias/${var.cluster_name}-eks-secrets"
+  target_key_id = aws_kms_key.secrets[0].key_id
+}
+
+locals {
+  secrets_kms_key_arn = var.secrets_kms_key_arn != "" ? var.secrets_kms_key_arn : aws_kms_key.secrets[0].arn
+}
+
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster.arn
@@ -105,6 +132,24 @@ resource "aws_eks_cluster" "main" {
   }
 
   enabled_cluster_log_types = var.cluster_log_types
+
+  # ── Secrets envelope encryption ─────────────────────────────────────────────
+  # Without this, Kubernetes Secrets sit in etcd protected only by EKS's own
+  # at-rest encryption of the managed control plane. Envelope encryption adds a
+  # customer-managed KMS key, so a Secret is unreadable without an explicit
+  # kms:Decrypt grant — which is also what makes access auditable in CloudTrail.
+  #
+  # ⚠ ONE-WAY. Enabling encryption_config on an existing cluster is permitted
+  # but cannot be undone, and the key cannot later be changed. Deleting or
+  # disabling the key makes every existing Secret permanently unreadable. This
+  # is safe to add now because no cluster exists; it would be a much larger
+  # decision afterwards.
+  encryption_config {
+    provider {
+      key_arn = local.secrets_kms_key_arn
+    }
+    resources = ["secrets"]
+  }
 
   # Ensure IAM role is ready before cluster
   depends_on = [aws_iam_role_policy_attachment.cluster_policy]
