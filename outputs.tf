@@ -66,7 +66,7 @@ output "cni" {
 
 output "cilium_helm_values" {
   description = <<-EOT
-    Helm values to pass when installing Cilium in the k8s-manifests layer.
+    Helm values to pass when installing Cilium in the aj-cluster-baseline layer.
     Null when cni = 'vpc-cni'.
     Usage: helm install cilium cilium/cilium --version <cilium_version> -f <(terraform output -json cilium_helm_values)
   EOT

@@ -243,9 +243,9 @@ Set `cni = "vpc-cni"` (default) or `cni = "cilium"` in your tfvars.
 This module automatically:
 - Strips `vpc-cni` and `kube-proxy` from the managed addons (Cilium replaces both via eBPF)
 - Keeps `coredns`, `pod-identity-agent`, and `aws-ebs-csi-driver` unchanged
-- Outputs `cilium_helm_values` with the exact Helm values to pass in your k8s-manifests layer
+- Outputs `cilium_helm_values` with the exact Helm values to pass in your aj-cluster-baseline layer
 
-Cilium itself is **installed via Helm in your k8s-manifests layer** (not in this module) to keep a clean separation between cluster provisioning and workload installation.
+Cilium itself is **installed via Helm in your aj-cluster-baseline layer** (not in this module) to keep a clean separation between cluster provisioning and workload installation.
 
 ### Installing Cilium after cluster apply
 
@@ -497,4 +497,4 @@ Dummy AWS credentials (`test`/`test`) and `skip_credentials_validation = true` i
 - [ ] Bottlerocket AMI validation testing
 - [ ] IPv6 dual-stack support
 
-> Karpenter NodePool + EC2NodeClass intentionally do **not** belong here — they're GitOps-managed CRDs in `k8s-manifests`, not Terraform resources (see `aj-infra-context/CLAUDE.md`'s architecture). Previously listed as a TODO in this repo by mistake.
+> Karpenter NodePool + EC2NodeClass intentionally do **not** belong here — they're GitOps-managed CRDs in `aj-cluster-baseline`, not Terraform resources (see `aj-infra-context/CLAUDE.md`'s architecture). Previously listed as a TODO in this repo by mistake.

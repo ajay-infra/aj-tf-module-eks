@@ -102,4 +102,4 @@ Dummy AWS creds (`test`/`test`) + `skip_credentials_validation = true` in provid
 - [ ] Bottlerocket AMI option (security-hardened alternative to AL2)
 - [ ] IPv6 dual-stack support
 
-> Karpenter NodePool + EC2NodeClass intentionally do **not** belong here — they're GitOps-managed CRDs in `k8s-manifests`, not Terraform resources. Previously listed as a TODO in this repo by mistake.
+> Karpenter NodePool + EC2NodeClass intentionally do **not** belong here — they're GitOps-managed CRDs in `aj-cluster-baseline`, not Terraform resources. Previously listed as a TODO in this repo by mistake.
