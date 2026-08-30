@@ -63,7 +63,7 @@ module "pod_identity" {
 
 # ── EKS Access Entries — IAM → K8s group mapping ──────────────────────────────
 # Replaces aws-auth ConfigMap (deprecated in EKS 1.29+).
-# Maps IAM Identity Center roles to K8s groups; ClusterRoles in k8s-manifests
+# Maps IAM Identity Center roles to K8s groups; ClusterRoles in aj-cluster-baseline
 # bind those groups to actual permissions.
 #
 # Standard entries (always created when role ARNs provided):
