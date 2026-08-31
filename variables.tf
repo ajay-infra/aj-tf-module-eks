@@ -41,12 +41,17 @@ variable "cost_center" {
 }
 
 variable "common_tags" {
-  type = map(string)
-  default = {
-    Project    = "ai-search"
-    ManagedBy  = "Terraform"
-    Repository = "aj-tf-module-eks"
-  }
+  type        = map(string)
+  description = <<-EOT
+    EXTRA tags, merged over the base set in locals.tf.
+
+    Project, ManagedBy and Repository used to live in this variable's DEFAULT.
+    Nothing overrode it, so it worked — but a consumer passing common_tags for
+    any reason silently dropped ManagedBy, which require-tags-product requires,
+    and every create in that OU would start failing with no local change to
+    explain it. They are in locals.tf now, where this can add but not remove.
+  EOT
+  default     = {}
 }
 
 variable "tags" {
