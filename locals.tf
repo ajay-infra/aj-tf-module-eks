@@ -15,6 +15,10 @@ locals {
   } : var.addons
 
   full_tags = merge(var.common_tags, {
+    # The estate's base set — see aj-skill-farm/rules/tagging.yaml.
+    Project     = "aj-tf-module-eks"
+    ManagedBy   = "Terraform"
+    Repository  = "aj-tf-module-eks"
     Environment = var.environment
     Team        = var.team
     CostCenter  = var.cost_center
