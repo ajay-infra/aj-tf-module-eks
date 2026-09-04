@@ -4,6 +4,17 @@ All notable changes to this module are documented here. Format loosely follows [
 
 ## [Unreleased]
 
+## [v1.1.0] - 2026-09-04
+
+No tag had ever been cut since `v1.0.0`, so `versions.yaml` in `aj-infra` pinned
+every workload cluster to a build that predates IAM Identity Center access
+entries entirely — `infra_lead_role_arn`/`infra_core_role_arn`/
+`infra_readonly_role_arn`/`break_glass_role_arn` didn't exist at that pin, so
+`provision-workload.yml` passing them was rejected outright as undeclared
+variables. Found by the new plan-only CI in `aj-infra` actually trying to plan
+against the pinned tag for the first time ever. All four new variables default
+to `""` — additive, not breaking.
+
 ### Added — security baseline
 - **Kubernetes Secrets envelope encryption.** `encryption_config` on the cluster with a customer-managed KMS key (created per cluster with rotation on, or supplied via `secrets_kms_key_arn`). Without it, Secrets sat in etcd protected only by EKS's own control-plane encryption. With it, reading a Secret requires an explicit `kms:Decrypt` grant and every access is auditable in CloudTrail.
   - **⚠ One-way.** Enabling this on an existing cluster is permitted but cannot be undone, and the key cannot be changed afterwards. Losing the key makes every Secret permanently unreadable — hence rotation on and a 30-day deletion window. Safe to add now because no cluster exists; a much larger decision later.
