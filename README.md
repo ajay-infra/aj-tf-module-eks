@@ -69,7 +69,7 @@ aj-tf-module-eks/
 module "eks" {
   source = "github.com/ajay-infra/aj-tf-module-eks"
 
-  cluster_name        = "ai-search-dev"
+  cluster_name        = "dev-blue"
   environment         = "dev"
   k8s_version         = "1.35"
   eks_deployment_mode = "standalone"
