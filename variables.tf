@@ -276,38 +276,34 @@ variable "node_groups" {
 #   arn:aws:iam::<account>:role/aws-reserved/sso.amazonaws.com/<region>/AWSReservedSSO_<name>_<hash>
 # Use a data source in the calling module to resolve the ARN by name prefix.
 
-variable "infra_lead_role_arn" {
-  type        = string
-  description = "IAM role ARN for infra-lead (AJPlatformInfraLead) — gets cluster-admin"
-  default     = ""
-}
-
-variable "infra_core_role_arn" {
-  type        = string
-  description = "IAM role ARN for infra-core (AJPlatformInfraEngineer) — K8s group: infra-core"
-  default     = ""
-}
-
-variable "infra_readonly_role_arn" {
-  type        = string
-  description = "IAM role ARN for read-only (AJPlatformReadOnly) — K8s group: infra-readonly"
-  default     = ""
-}
-
-variable "break_glass_role_arn" {
-  type        = string
-  description = "IAM role ARN for break-glass (AJPlatformBreakGlass) — gets cluster-admin, same mechanism as infra-lead"
-  default     = ""
-}
-
-variable "team_developer_role_arns" {
+variable "access_groups" {
+  description = <<-EOT
+    Human access, one entry per group: group name -> the Identity Center
+    reserved role ARN for that group's permission set in THIS cluster's
+    account (arn:aws:iam::<this account>:role/aws-reserved/sso.amazonaws.com/…/AWSReservedSSO_<group>_<hash>).
+    Group names are the identity-and-access-v1.md §3 grammar and become the
+    kubernetes_groups the cluster's RBAC binds; estate-admin and
+    estate-break-glass get AmazonEKSClusterAdminPolicy instead.
+    Empty = no human can reach the cluster (valid for a cluster being retired).
+  EOT
   type        = map(string)
-  description = "Map of team name -> that team's AJPlatformDeveloper-<team> IAM role ARN (from aj-tf-module-iam-identity-center's developer_permission_set_arns output, resolved to an assumed-role ARN). Each gets its own access entry mapping to K8s group <team>-developers."
   default     = {}
+  validation {
+    condition     = alltrue([for g, _ in var.access_groups : can(regex("^(team-[0-9]{4}-(read|write)|estate-(read|infra|admin|break-glass))$", g))])
+    error_message = "access_groups keys must be team-NNNN-read|write or estate-read|infra|admin|break-glass."
+  }
+  validation {
+    condition     = alltrue([for _, arn in var.access_groups : can(regex("^arn:aws:iam::[0-9]{12}:role/", arn))])
+    error_message = "access_groups values must be IAM role ARNs."
+  }
+  validation {
+    condition     = length(distinct(values(var.access_groups))) == length(var.access_groups)
+    error_message = "Two groups map to the same role ARN — an access entry is per principal, and one principal resolves to exactly one group."
+  }
 }
 
 variable "iam_access_entries" {
-  description = "Additional IAM → K8s group mappings (team CI roles, service accounts)"
+  description = "Non-human IAM → K8s group mappings (the hub ArgoCD role, CI roles). Humans go through access_groups."
   type = list(object({
     principal_arn     = string
     kubernetes_groups = list(string)

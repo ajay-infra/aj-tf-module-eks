@@ -61,88 +61,49 @@ module "pod_identity" {
   tags                 = local.full_tags
 }
 
-# ── EKS Access Entries — IAM → K8s group mapping ──────────────────────────────
-# Replaces aws-auth ConfigMap (deprecated in EKS 1.29+).
-# Maps IAM Identity Center roles to K8s groups; ClusterRoles in aj-cluster-baseline
-# bind those groups to actual permissions.
+# ── EKS Access Entries — the group is the contract ───────────────────────────
+# Replaces aws-auth (deprecated in EKS 1.29+). One entry per human group
+# (identity-and-access-v1.md §6.1): the principal is the Identity Center
+# reserved role for that group's permission set, IN THIS CLUSTER'S ACCOUNT —
+# Identity Center provisions one such role into every assigned account, and
+# a role ARN in any other account (the payer, say) authenticates nobody.
 #
-# Standard entries (always created when role ARNs provided):
-#   infra-lead     → AmazonEKSClusterAdminPolicy (system:masters equivalent)
-#   infra-core     → K8s group: infra-core (bound to platform-deployer ClusterRole)
-#   infra-readonly → K8s group: infra-readonly (bound to platform-viewer ClusterRole)
-#   break-glass    → AmazonEKSClusterAdminPolicy (same mechanism as infra-lead)
+#   team-NNNN-read / team-NNNN-write / estate-read / estate-infra
+#       STANDARD entry, kubernetes_groups = [<group>], no access policy —
+#       aj-gitops/baseline/rbac binds estate-*; the workloads chart renders
+#       the team RoleBindings per namespace from the record's `team:`
+#   estate-admin / estate-break-glass
+#       STANDARD entry + AmazonEKSClusterAdminPolicy, cluster scope — the
+#       only cluster-admin in the estate, and never a ClusterRoleBinding
 #
-# Additional entries can be passed via var.iam_access_entries for team service accounts.
+# v1.x had five named ARN variables with the same account bug in each; v2.0.0
+# takes the map and nothing else.
 
-resource "aws_eks_access_entry" "infra_lead" {
-  count         = var.infra_lead_role_arn != "" ? 1 : 0
-  cluster_name  = module.eks_cluster.cluster_name
-  principal_arn = var.infra_lead_role_arn
-  type          = "STANDARD"
-  tags          = local.full_tags
+locals {
+  cluster_admin_groups = ["estate-admin", "estate-break-glass"]
 }
 
-resource "aws_eks_access_policy_association" "infra_lead_cluster_admin" {
-  count         = var.infra_lead_role_arn != "" ? 1 : 0
-  cluster_name  = module.eks_cluster.cluster_name
-  principal_arn = var.infra_lead_role_arn
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-  access_scope { type = "cluster" }
-  depends_on = [aws_eks_access_entry.infra_lead]
-}
+resource "aws_eks_access_entry" "group" {
+  for_each = var.access_groups
 
-resource "aws_eks_access_entry" "infra_core" {
-  count             = var.infra_core_role_arn != "" ? 1 : 0
-  cluster_name      = module.eks_cluster.cluster_name
-  principal_arn     = var.infra_core_role_arn
-  type              = "STANDARD"
-  kubernetes_groups = ["infra-core"]
-  tags              = local.full_tags
-}
-
-resource "aws_eks_access_entry" "infra_readonly" {
-  count             = var.infra_readonly_role_arn != "" ? 1 : 0
-  cluster_name      = module.eks_cluster.cluster_name
-  principal_arn     = var.infra_readonly_role_arn
-  type              = "STANDARD"
-  kubernetes_groups = ["infra-readonly"]
-  tags              = local.full_tags
-}
-
-# One access entry per team's AJPlatformDeveloper-<team> IAM Identity Center
-# role, each mapped to its own <team>-developers K8s group. Fixed 2026-08-25:
-# there was previously no developer access entry of any kind here — roles.yaml
-# and aj-tf-module-iam-identity-center each separately claimed a different,
-# never-implemented mechanism for this (see that module's main.tf header
-# comment for the full history). kubernetes_groups here must match exactly
-# what register-namespace's generated RoleBinding subjects expect per team.
-resource "aws_eks_access_entry" "team_developer" {
-  for_each          = var.team_developer_role_arns
   cluster_name      = module.eks_cluster.cluster_name
   principal_arn     = each.value
   type              = "STANDARD"
-  kubernetes_groups = ["${each.key}-developers"]
-  tags              = local.full_tags
+  kubernetes_groups = contains(local.cluster_admin_groups, each.key) ? null : [each.key]
+  tags              = merge(local.full_tags, { "access-group" = each.key })
 }
 
-resource "aws_eks_access_entry" "break_glass" {
-  count         = var.break_glass_role_arn != "" ? 1 : 0
-  cluster_name  = module.eks_cluster.cluster_name
-  principal_arn = var.break_glass_role_arn
-  type          = "STANDARD"
-  tags          = local.full_tags
-}
+resource "aws_eks_access_policy_association" "cluster_admin" {
+  for_each = { for g, arn in var.access_groups : g => arn if contains(local.cluster_admin_groups, g) }
 
-resource "aws_eks_access_policy_association" "break_glass_cluster_admin" {
-  count         = var.break_glass_role_arn != "" ? 1 : 0
   cluster_name  = module.eks_cluster.cluster_name
-  principal_arn = var.break_glass_role_arn
+  principal_arn = each.value
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
   access_scope { type = "cluster" }
-  depends_on = [aws_eks_access_entry.break_glass]
+  depends_on = [aws_eks_access_entry.group]
 }
 
-# Additional access entries for team service accounts or CI roles
+# Non-human principals — the hub's ArgoCD role, CI roles, service accounts
 resource "aws_eks_access_entry" "additional" {
   for_each          = { for e in var.iam_access_entries : e.principal_arn => e }
   cluster_name      = module.eks_cluster.cluster_name
