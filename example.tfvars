@@ -110,7 +110,7 @@ pod_identity_associations = {
 }
 
 # ── Tags ──────────────────────────────────────────────────────────────────────
-team        = "team-0001"   # a team code — aj-infra/envs/org/teams.yaml
+team        = "team-0001" # a team code — aj-infra/envs/org/teams.yaml
 cost_center = "infra-2026-q1"
 tags = {
   Owner = "ajay"
