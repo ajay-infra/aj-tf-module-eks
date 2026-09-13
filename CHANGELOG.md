@@ -4,6 +4,31 @@ All notable changes to this module are documented here. Format loosely follows [
 
 ## [Unreleased]
 
+## [v2.0.0] - 2026-09-13
+
+Breaking. Human access is one map.
+
+- **Removed** `infra_lead_role_arn`, `infra_core_role_arn`,
+  `infra_readonly_role_arn`, `break_glass_role_arn`, `team_developer_role_arns`
+  and the five `aws_eks_access_entry` / `aws_eks_access_policy_association`
+  resources behind them. Every consumer passed ARNs in the payer account
+  (`111111111111`); Identity Center provisions its reserved role into each
+  assigned account, so an entry trusting the payer's role authenticates
+  nobody on a cluster in `444444444444`.
+- **Added** `access_groups = map(string)`: group name → reserved role ARN in
+  this cluster's account. Keys are validated against the
+  identity-and-access-v1.md §3 grammar; values must be role ARNs; no two
+  groups may share a principal. `team-*` and `estate-read`/`estate-infra`
+  become STANDARD entries with `kubernetes_groups = [<group>]`;
+  `estate-admin` / `estate-break-glass` get `AmazonEKSClusterAdminPolicy`.
+  The K8s group names `infra-core` / `infra-readonly` / `<team>-developers`
+  are gone with them (aj-gitops#32 rebinds `estate-read` / `estate-infra`).
+- `iam_access_entries` kept for non-human principals (the hub's ArgoCD role,
+  CI); its description says so.
+- Migration: replace the four `-var='…_role_arn=…'` lines with one
+  `-var='access_groups={…}'` derived from the cluster record's `access.teams`
+  and the owning account id.
+
 ## [v1.1.0] - 2026-09-04
 
 No tag had ever been cut since `v1.0.0`, so `versions.yaml` in `aj-infra` pinned
