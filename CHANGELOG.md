@@ -4,6 +4,15 @@ All notable changes to this module are documented here. Format loosely follows [
 
 ## [Unreleased]
 
+### Changed — `team` is required and must be a team code
+Breaking: `var.team` no longer defaults to `infra-core`; it must be
+`team-NNNN`, a row in `aj-infra/envs/org/teams.yaml`. Every consumer in the
+estate already passes one (`team = "team-0001"` in aj-infra's tfvars since
+2026-09-12), so nothing changes for them; a caller that forgot would have
+tagged resources — and labelled namespaces — with a slug nobody registered,
+which `require-product-code` now refuses at admission. Next tag is a major.
+
+
 ## [v2.0.0] - 2026-09-13
 
 Breaking. Human access is one map.
